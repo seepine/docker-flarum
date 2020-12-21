@@ -19,10 +19,12 @@ ENV GID=991 \
     LOG_TO_STDOUT=false \
     GITHUB_TOKEN_AUTH=false \
     FLARUM_PORT=8888
-
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-progress --no-cache \
     curl \
     git \
+    gcc \
+    zlib \
     libcap \
     nginx \
     php7 \
@@ -52,9 +54,11 @@ RUN apk add --no-progress --no-cache \
     su-exec \
     s6 \
   && cd /tmp \
-  && curl -s http://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+  && curl -s https://install.phpcomposer.com/installer | php -- --install-dir=/usr/local/bin --filename=composer \
   && sed -i 's/memory_limit = .*/memory_limit = ${PHP_MEMORY_LIMIT}/' /etc/php7/php.ini \
   && chmod +x /usr/local/bin/composer \
+  && composer selfupdate \
+  && composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/ \
   && mkdir -p /flarum/app \
   && COMPOSER_CACHE_DIR="/tmp" composer create-project --stability=beta --no-progress -- flarum/flarum /flarum/app $VERSION \
   && composer clear-cache \
@@ -63,5 +67,10 @@ RUN apk add --no-progress --no-cache \
 
 COPY rootfs /
 RUN chmod +x /usr/local/bin/* /services/*/run /services/.s6-svscan/*
+
+# RUN flarum extension require littlegolden/flarum-lang-simplified-chinese:^v0.1.70 \
+#   && flarum extension require littlegolden/flarum-lang-japanese \
+#   && flarum extension require jjandxa/flarum-ext-chinese-search
+
 VOLUME /flarum/app/extensions /etc/nginx/conf.d
 CMD ["/usr/local/bin/startup"]
